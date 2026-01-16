@@ -29,12 +29,17 @@ class NetworkMonitor: NetworkMonitorProtocol {
     }
 }
 
-class MockNetworkMonitor: NetworkMonitorProtocol {
+final class MockNetworkMonitor: NetworkMonitorProtocol {
+
     private let subject = CurrentValueSubject<Bool, Never>(true)
-    
+
     var isOnlinePublisher: AnyPublisher<Bool, Never> { subject.eraseToAnyPublisher() }
+
     var isOnline: Bool { subject.value }
-    
-    func setOnline(_ online: Bool) { subject.send(online) }
+
+    // Simulate network changes
+    func setOnline(_ online: Bool) {
+        subject.send(online)
+    }
 }
 
