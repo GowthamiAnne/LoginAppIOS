@@ -1,0 +1,13 @@
+import Foundation
+
+enum LoginErrorMessage {
+    static let noInternet = "No internet connection."
+    static let invalidCredentials = "Invalid username or password."
+    static let serverError = "Server error. Please try again."
+    static let generic = "Something went wrong. Try again."
+    
+    static func locked(minutes: Int) -> String {
+        "Too many failed attempts. Try again in \(minutes) minute\(minutes > 1 ? "s" : "")."
+    }
+}
+
