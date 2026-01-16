@@ -1,50 +1,89 @@
-//
-//  LoginAppIOSUITests.swift
-//  LoginAppIOSUITests
-//
-//  Created by Suresh Reddy on 03/01/2026.
-//
-
 import XCTest
+
+@testable import LoginAppIOS
 
 final class LoginAppIOSUITests: XCTestCase {
 
+    private let app = XCUIApplication()
+
+    // MARK: - Setup
+
     override func setUpWithError() throws {
-        // Put setup code here. This method is called before the invocation of each test method in the class.
-
-        // In UI tests it is usually best to stop immediately when a failure occurs.
         continueAfterFailure = false
-
-        // In UI tests it’s important to set the initial state - such as interface orientation - required for your tests before they run. The setUp method is a good place to do this.
     }
 
-    override func tearDownWithError() throws {
-        // Put teardown code here. This method is called after the invocation of each test method in the class.
-    }
-
-    @MainActor
-    func testExample() throws {
-        // UI tests must launch the application that they test.
-        let app = XCUIApplication()
+    private func launchApp(env: [String: String] = [:]) {
+        app.launchEnvironment = env
         app.launch()
-
-        // Use XCTAssert and related functions to verify your tests produce the correct results.
     }
 
-    @MainActor
-    func testLaunchPerformance() throws {
-        // This measures how long it takes to launch your application.
-        measure(metrics: [XCTApplicationLaunchMetric()]) {
-            XCUIApplication().launch()
-        }
-    }
-    
-    func testLoginScreenElementsExist() throws {
-            let app = XCUIApplication()
-            app.launch()
+    // MARK: - Helpers
+    private func enterCredentials(username: String, password: String) {
+        let usernameField = app.textFields["usernameField"]
+        let passwordField = app.secureTextFields["passwordField"]
 
-            XCTAssertTrue(app.textFields["Username"].exists)
-            XCTAssertTrue(app.secureTextFields["Password"].exists)
-            XCTAssertTrue(app.buttons["Login"].exists)
+        XCTAssertTrue(usernameField.waitForExistence(timeout: 5) && usernameField.isHittable)
+        usernameField.tap()
+        usernameField.typeText(username)
+
+        XCTAssertTrue(passwordField.waitForExistence(timeout: 5) && passwordField.isHittable)
+        passwordField.tap()
+        passwordField.typeText(password)
+    }
+
+    // MARK: - Tests
+
+    /// 1. Validation enables / disables login button
+    func testLoginButtonValidationEnableDisable() {
+        launchApp()
+
+        let loginButton = app.buttons["Login"]
+        XCTAssertFalse(loginButton.isEnabled)
+
+        enterCredentials(username: "anne", password: "gowthami")
+
+        XCTAssertTrue(loginButton.isEnabled)
+    }
+
+    /// 2. Success → navigation event
+    func testSuccessfulLoginNavigatesToHome() {
+        launchApp(env: ["UITEST_LOGIN_RESULT": "success"])
+
+        enterCredentials(username: "anne", password: "gowthami")
+        app.buttons["Login"].tap()
+
+        let welcomeText = app.staticTexts["Welcome"]
+        XCTAssertTrue(welcomeText.waitForExistence(timeout: 5),
+                      "Home screen should be displayed after successful login")
+    }
+
+    /// 3. Error increments failure count
+    func testLoginFailureShowsError() {
+        launchApp(env: ["UITEST_LOGIN_RESULT": "failure"])
+
+        enterCredentials(username: "wrong", password: "gowthami")
+
+        let loginButton = app.buttons["Login"]
+        XCTAssertTrue(loginButton.waitForExistence(timeout: 5))
+        loginButton.tap()
+
+        let errorLabel = app.staticTexts["errorLabel"]
+        XCTAssertTrue(errorLabel.waitForExistence(timeout: 5),
+                      "Error message should be shown on login failure")
+    }
+
+    /// 4. Lockout after 3 failures
+    func testAccountLocksAfterThreeFailures() {
+        launchApp(env: ["UITEST_LOGIN_RESULT": "failure"])
+
+        for _ in 1...3 {
+            enterCredentials(username: "wrong", password: "gowthami")
+            app.buttons["Login"].tap()
         }
+
+        let errorLabel = app.staticTexts["errorLabel"]
+        XCTAssertTrue(errorLabel.waitForExistence(timeout: 5),
+                      "Error message should be shown on locked")
+    }
 }
+
